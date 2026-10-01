@@ -30,6 +30,12 @@ module Flipper
       false
     end
 
+    # Internal: Default explain implementation. Subclasses override to record
+    # why the gate opened or did not. Returns the GateResult.
+    def explain(result, context, **_options)
+      result.complete!(open?(context))
+    end
+
     # Internal: Check if a gate is protects an actor. Implemented in subclass.
     #
     # Returns true if gate protects actor, false if not.

@@ -57,6 +57,10 @@ module Flipper
         build({ PercentageOfActors: [self, build(object)] })
       end
 
+      def in_group(name)
+        build({ Group: name })
+      end
+
       def any?
         is_a?(Expression) && function == Expressions::Any
       end

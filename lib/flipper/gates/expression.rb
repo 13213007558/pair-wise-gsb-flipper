@@ -38,6 +38,60 @@ module Flipper
         end
       end
 
+      # Internal: Explain this gate with a single evaluation per actor that
+      # records the full expression tree, short-circuited branches, actor
+      # properties and concrete time/random values.
+      def explain(result, context, session: nil, hidden_properties: [])
+        data = context.values.expression
+
+        if data.nil? || data.empty?
+          result.complete!(false, reason: :expression_not_enabled)
+          return
+        end
+
+        expression = Flipper::Expression.build(data)
+
+        if context.actors.nil? || context.actors.empty?
+          evaluator = Flipper::Explain::Evaluator.new(
+            expression,
+            feature_name: context.feature_name,
+            properties: DEFAULT_PROPERTIES,
+            actor: nil,
+            session: session,
+            hidden_properties: hidden_properties,
+          )
+          open = evaluator.call
+          result.expression_tree = evaluator.root
+          result.complete!(open, reason: open ? :expression_true : :expression_false)
+          return
+        end
+
+        open = false
+        context.actors.each do |actor|
+          properties = properties(actor)
+          evaluator = Flipper::Explain::Evaluator.new(
+            expression,
+            feature_name: context.feature_name,
+            properties: properties,
+            actor: actor,
+            session: session,
+            hidden_properties: hidden_properties,
+          )
+          matched = evaluator.call
+          result.actor_results << Flipper::Explain::ActorResult.new(
+            actor.value, matched,
+            reason: matched ? :expression_true : :expression_false,
+            tree: evaluator.root
+          )
+          if matched
+            open = true
+            break
+          end
+        end
+
+        result.complete!(open, reason: open ? :expression_true : :expression_false)
+      end
+
       def protects?(thing)
         thing.is_a?(Flipper::Expression) || thing.is_a?(Hash)
       end

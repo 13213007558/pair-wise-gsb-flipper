@@ -40,6 +40,14 @@ module Flipper
       feature(name).enabled?(*args)
     end
 
+    # Public: Explain whether a feature is enabled for the given args using
+    # the same evaluation that produces the boolean result.
+    #
+    # Returns a Flipper::Explain::Result.
+    def explain?(name, *args, **options)
+      feature(name).explain?(*args, **options)
+    end
+
     # Public: Enable a feature.
     #
     # name - The String or Symbol name of the feature.

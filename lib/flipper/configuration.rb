@@ -3,7 +3,13 @@ module Flipper
     def initialize(options = {})
       @builder = AdapterBuilder.new { store Flipper::Adapters::Memory }
       @default = -> { Flipper.new(@builder.to_adapter) }
+      @hidden_actor_properties = []
     end
+
+    # Public: Actor property names whose values are redacted from
+    # Flipper.explain? results (e.g. [:email, :ssn]). Property keys are still
+    # shown; their values are reported as :hidden.
+    attr_accessor :hidden_actor_properties
 
     # The default adapter to use.
     #

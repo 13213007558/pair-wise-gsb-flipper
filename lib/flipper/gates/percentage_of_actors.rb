@@ -52,6 +52,42 @@ module Flipper
         Zlib.crc32(id) % (100 * SCALING_FACTOR) < percentage * SCALING_FACTOR
       end
 
+      # Internal: Explain this gate without re-running anything.
+      def explain(result, context, **_options)
+        unless context.actors?
+          result.complete!(false, reason: :no_actor)
+          return
+        end
+
+        percentage = context.values.percentage_of_actors
+        result.details[:percentage] = percentage
+
+        if percentage <= 0
+          result.complete!(false, reason: :percentage_zero)
+          return
+        elsif percentage >= 100
+          result.complete!(true, reason: :percentage_100)
+          return
+        end
+
+        actors = context.actors
+        id = if actors.size == 1
+          "#{context.feature_name}#{actors.first.value}"
+        else
+          "#{context.feature_name}#{actors.map(&:value).sort.join}"
+        end
+
+        bucket = Zlib.crc32(id) % (100 * SCALING_FACTOR)
+        threshold = percentage * SCALING_FACTOR
+        open = bucket < threshold
+
+        result.details[:id] = id
+        result.details[:bucket] = bucket
+        result.details[:threshold] = threshold
+        result.details[:actual_value] = open
+        result.complete!(open, reason: open ? :in_percentage : :not_in_percentage)
+      end
+
       def protects?(thing)
         thing.is_a?(Types::PercentageOfActors)
       end

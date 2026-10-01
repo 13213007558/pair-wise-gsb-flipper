@@ -56,7 +56,7 @@ module Flipper
   # Public: All the methods delegated to instance. These should match the
   # interface of Flipper::DSL.
   def_delegators :instance,
-                 :enabled?, :enable, :disable,
+                 :enabled?, :explain?, :enable, :disable,
                  :enable_expression, :disable_expression,
                  :expression, :add_expression, :remove_expression,
                  :enable_actor, :disable_actor,
@@ -114,6 +114,10 @@ module Flipper
 
   def feature_disabled(name)
     feature_enabled(name).eq(false)
+  end
+
+  def in_group(name)
+    Expression.build({ Group: name })
   end
 
   # Public: Use this to register a group by name.
@@ -210,6 +214,7 @@ require 'flipper/middleware/setup_env'
 require 'flipper/poller'
 require 'flipper/registry'
 require 'flipper/expression'
+require 'flipper/explain'
 require 'flipper/type'
 require 'flipper/types/actor'
 require 'flipper/types/boolean'

@@ -27,6 +27,15 @@ module Flipper
         context.values.boolean
       end
 
+      # Internal: Explain this gate without re-running anything.
+      def explain(result, context, **_options)
+        if context.values.boolean
+          result.complete!(true, reason: :boolean_enabled)
+        else
+          result.complete!(false, reason: :boolean_not_enabled)
+        end
+      end
+
       def wrap(thing)
         Types::Boolean.wrap(thing)
       end

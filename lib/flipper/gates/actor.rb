@@ -33,6 +33,31 @@ module Flipper
         end
       end
 
+      # Internal: Explain this gate without re-running anything.
+      def explain(result, context, **_options)
+        unless context.actors?
+          result.complete!(false, reason: :no_actor)
+          return
+        end
+
+        enabled_actors = context.values.actors
+        if enabled_actors.empty?
+          result.complete!(false, reason: :no_actors_enabled)
+          return
+        end
+
+        matched = context.actors.any? do |actor|
+          hit = enabled_actors.include?(actor.value)
+          result.actor_results << Flipper::Explain::ActorResult.new(
+            actor.value, hit,
+            reason: hit ? :actor_enabled : :actor_not_enabled
+          )
+          hit
+        end
+
+        result.complete!(matched, reason: matched ? :actor_enabled : :actor_not_enabled)
+      end
+
       def wrap(actor)
         Types::Actor.wrap(actor)
       end

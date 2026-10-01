@@ -3,6 +3,7 @@ require 'flipper/type'
 require 'flipper/gate'
 require 'flipper/feature_check_context'
 require 'flipper/gate_values'
+require 'flipper/explain'
 
 module Flipper
   class Feature
@@ -107,6 +108,73 @@ module Flipper
         else
           false
         end
+      end
+    end
+
+    # Public: Explain why a feature is or is not enabled for zero or more
+    # actors. The explanation is produced by the same evaluation that
+    # determines the result; unlike calling #enabled? and then re-running the
+    # check, every recorded gate and expression node belongs to this one pass.
+    #
+    # actors - Zero or more actors, same as #enabled?.
+    #
+    # options - The Hash of options.
+    #           :hidden_properties - Array of String/Symbol actor property
+    #             names whose values must be redacted in the explanation.
+    #             Defaults to Flipper.configuration.hidden_actor_properties.
+    #           :session - Internal Flipper::Explain::Session used when this
+    #             check is nested inside another feature's explanation via a
+    #             FeatureEnabled condition.
+    #
+    # Returns a Flipper::Explain::Result.
+    def explain?(*actors, session: nil, hidden_properties: nil)
+      actors = wrap_actors(actors)
+      hidden_properties = hidden_properties || Flipper.configuration.hidden_actor_properties
+      session ||= Flipper::Explain::Session.new(hidden_properties: hidden_properties)
+
+      instrument(:explain?, thing: actors&.first, actors: actors) do |payload|
+        values = gate_values
+        context = FeatureCheckContext.new(
+          feature_name: @name,
+          values: values,
+          actors: actors,
+        )
+
+        gate_results = gates.map { |gate| Flipper::Explain::GateResult.new(gate.name) }
+        properties = actors ? actor_properties(actors, hidden_properties) : []
+
+        session.with_feature(@name) do
+          open_found = false
+
+          gates.each_with_index do |gate, index|
+            gate_result = gate_results[index]
+
+            if open_found
+              gate_result.skipped!(:short_circuit_gate)
+              next
+            end
+
+            gate.explain(
+              gate_result,
+              context,
+              session: session,
+              hidden_properties: hidden_properties,
+            )
+
+            if gate_result.open?
+              open_found = true
+              payload[:gate_name] = gate.name
+            end
+          end
+        end
+
+        Flipper::Explain::Result.new(
+          feature_name: @name,
+          actors: actors || [],
+          properties: properties,
+          gates: gate_results,
+          gate_values: values,
+        )
       end
     end
 
@@ -438,6 +506,26 @@ module Flipper
     end
 
     private
+
+    # Internal: Build the redacted actor properties shown in the explanation.
+    def actor_properties(actors, hidden_properties)
+      hidden = hidden_properties.map(&:to_s)
+
+      actors.map do |actor|
+        properties = {}
+
+        if actor.respond_to?(:flipper_properties)
+          properties.update(actor.flipper_properties)
+        end
+
+        properties.transform_keys!(&:to_s)
+        properties['flipper_id'] = actor.value if actor.respond_to?(:value)
+
+        hidden.each { |key| properties[key] = :hidden if properties.key?(key) }
+
+        properties
+      end
+    end
 
     # Internal: Mirrors a trusted remote expression during adapter sync,
     # including legacy expressions that predate empty-group validation.

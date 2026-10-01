@@ -32,6 +32,35 @@ module Flipper
         end
       end
 
+      # Internal: Explain this gate without re-running anything. Each group is
+      # checked against each actor until one matches, mirroring open?.
+      def explain(result, context, **_options)
+        unless context.actors?
+          result.complete!(false, reason: :no_actor)
+          return
+        end
+
+        enabled_groups = context.values.groups
+        if enabled_groups.empty?
+          result.complete!(false, reason: :no_groups_enabled)
+          return
+        end
+
+        matched = enabled_groups.any? do |name|
+          context.actors.any? do |actor|
+            hit = Flipper.group(name).match?(actor, context)
+            result.actor_results << Flipper::Explain::ActorResult.new(
+              actor.value, hit,
+              reason: hit ? :group_match : :group_no_match,
+              details: { group: name.to_s }
+            )
+            hit
+          end
+        end
+
+        result.complete!(matched, reason: matched ? :group_match : :group_no_match)
+      end
+
       def wrap(thing)
         Types::Group.wrap(thing)
       end
