@@ -28,6 +28,28 @@ module Flipper
       false
     end
 
+    # Public: Explicitly deny an actor or group for a feature, taking
+    # precedence over every gate during enabled? checks. Adapters that
+    # support deny lists must override this.
+    #
+    # Returns true if successful.
+    # Raises Flipper::DenyNotSupported if the adapter cannot store denies.
+    def deny(feature, thing)
+      raise DenyNotSupported,
+        "#{name} adapter does not support deny lists"
+    end
+
+    # Public: Remove an actor or group from the explicit deny list for a
+    # feature, restoring normal gate evaluation. Adapters that support deny
+    # lists must override this.
+    #
+    # Returns true if successful.
+    # Raises Flipper::DenyNotSupported if the adapter cannot store denies.
+    def allow(feature, thing)
+      raise DenyNotSupported,
+        "#{name} adapter does not support deny lists"
+    end
+
     # Public: Get all features and gate values in one call. Defaults to one call
     # to features and another to get_multi. Feel free to override per adapter to
     # make this more efficient.

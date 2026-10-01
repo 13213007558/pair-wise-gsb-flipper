@@ -142,6 +142,34 @@ module Flipper
         end
       end
 
+      # Public
+      def deny(feature, thing)
+        default_payload = {
+          operation: :deny,
+          adapter_name: @adapter.name,
+          feature_name: feature.name,
+          thing_value: thing.value,
+        }
+
+        @instrumenter.instrument(InstrumentationName, default_payload) do |payload|
+          payload[:result] = @adapter.deny(feature, thing)
+        end
+      end
+
+      # Public
+      def allow(feature, thing)
+        default_payload = {
+          operation: :allow,
+          adapter_name: @adapter.name,
+          feature_name: feature.name,
+          thing_value: thing.value,
+        }
+
+        @instrumenter.instrument(InstrumentationName, default_payload) do |payload|
+          payload[:result] = @adapter.allow(feature, thing)
+        end
+      end
+
       def import(source)
         default_payload = {
           operation: :import,

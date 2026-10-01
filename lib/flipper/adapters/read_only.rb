@@ -4,7 +4,7 @@ module Flipper
   module Adapters
     # Public: Adapter that wraps another adapter and raises for any writes.
     class ReadOnly < Wrapper
-      WRITE_METHODS = %i[import add remove clear enable disable]
+      WRITE_METHODS = %i[import add remove clear enable disable deny allow]
 
       class WriteAttempted < Error
         def initialize(message = nil)

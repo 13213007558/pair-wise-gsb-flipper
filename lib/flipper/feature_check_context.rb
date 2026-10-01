@@ -44,5 +44,15 @@ module Flipper
     def percentage_of_time_value
       values.percentage_of_time
     end
+
+    # Public: Convenience method for denied actors value like Feature has.
+    def denied_actors_value
+      values.denied_actors
+    end
+
+    # Public: Convenience method for denied groups value like Feature has.
+    def denied_groups_value
+      values.denied_groups
+    end
   end
 end

@@ -185,6 +185,54 @@ module Flipper
       feature(name).disable_percentage_of_actors
     end
 
+    # Public: Explicitly deny an actor for a feature, even if a gate would
+    # enable it. Intended for emergency rollback of individual accounts.
+    #
+    # name - The String or Symbol name of the feature.
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Feature#deny_actor.
+    def deny_actor(name, actor)
+      feature(name).deny_actor(actor)
+    end
+
+    # Public: Explicitly deny a group for a feature, even if a gate would
+    # enable it.
+    #
+    # name - The String or Symbol name of the feature.
+    # group - a Flipper::Types::Group instance or a String or Symbol name of a
+    #         registered group.
+    #
+    # Returns result of Feature#deny_group.
+    def deny_group(name, group)
+      feature(name).deny_group(group)
+    end
+
+    # Public: Remove an actor from the explicit deny list for a feature,
+    # restoring normal gate evaluation.
+    #
+    # name - The String or Symbol name of the feature.
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Feature#allow_actor.
+    def allow_actor(name, actor)
+      feature(name).allow_actor(actor)
+    end
+
+    # Public: Remove a group from the explicit deny list for a feature,
+    # restoring normal gate evaluation.
+    #
+    # name - The String or Symbol name of the feature.
+    # group - a Flipper::Types::Group instance or a String or Symbol name of a
+    #         registered group.
+    #
+    # Returns result of Feature#allow_group.
+    def allow_group(name, group)
+      feature(name).allow_group(group)
+    end
+
     # Public: Add a feature.
     #
     # name - The String or Symbol name of the feature.

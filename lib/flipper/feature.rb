@@ -89,6 +89,12 @@ module Flipper
 
     # Public: Check if a feature is enabled for zero or more actors.
     #
+    # Explicitly denied actors and groups (see deny_actor/deny_group) take
+    # precedence over every gate, including boolean, percentage and
+    # expression gates. Aggregation rule for multi-actor checks: if ANY of
+    # the given actors is denied, the whole check returns false; otherwise
+    # the result is true when any gate is open for any actor.
+    #
     # Returns true if enabled, false if not.
     def enabled?(*actors)
       actors = wrap_actors(actors)
@@ -101,7 +107,10 @@ module Flipper
           actors: actors
         )
 
-        if open_gate = gates.detect { |gate| gate.open?(context) }
+        if denied?(context)
+          payload[:gate_name] = :deny
+          false
+        elsif open_gate = gates.detect { |gate| gate.open?(context) }
           payload[:gate_name] = open_gate.name
           true
         else
@@ -254,6 +263,52 @@ module Flipper
       disable Types::PercentageOfActors.new(0)
     end
 
+    # Public: Explicitly deny an actor for this feature, even if a gate
+    # (boolean, percentage, expression, actor or group) would enable it.
+    # Intended for emergency rollback of individual accounts while the
+    # feature stays fully enabled for everyone else.
+    #
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Adapter#deny.
+    def deny_actor(actor)
+      deny Types::Actor.wrap(actor)
+    end
+
+    # Public: Explicitly deny a group for this feature. Any actor matching
+    # the group is denied, even if a gate would enable the feature.
+    #
+    # group - a Flipper::Types::Group instance or a String or Symbol name of a
+    #         registered group.
+    #
+    # Returns result of Adapter#deny.
+    def deny_group(group)
+      deny Types::Group.wrap(group)
+    end
+
+    # Public: Remove an actor from the explicit deny list, restoring normal
+    # gate evaluation for the actor.
+    #
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Adapter#allow.
+    def allow_actor(actor)
+      allow Types::Actor.wrap(actor)
+    end
+
+    # Public: Remove a group from the explicit deny list, restoring normal
+    # gate evaluation for actors matching the group.
+    #
+    # group - a Flipper::Types::Group instance or a String or Symbol name of a
+    #         registered group.
+    #
+    # Returns result of Adapter#allow.
+    def allow_group(group)
+      allow Types::Group.wrap(group)
+    end
+
     # Public: Returns state for feature (:on, :off, or :conditional).
     def state
       values = gate_values
@@ -352,6 +407,20 @@ module Flipper
       gate_values.percentage_of_time
     end
 
+    # Public: Get the adapter value for the explicitly denied actors.
+    #
+    # Returns Set of String flipper_id's.
+    def denied_actors_value
+      gate_values.denied_actors
+    end
+
+    # Public: Get the adapter value for the explicitly denied groups.
+    #
+    # Returns Set of String group names.
+    def denied_groups_value
+      gate_values.denied_groups
+    end
+
     # Public: Get the gates that have been enabled for the feature.
     #
     # Returns an Array of Flipper::Gate instances.
@@ -438,6 +507,46 @@ module Flipper
     end
 
     private
+
+    # Internal: Explicitly deny an actor or group for this feature.
+    #
+    # Returns the result of Adapter#deny.
+    def deny(thing)
+      instrument(:deny) do |payload|
+        adapter.add self
+        payload[:thing] = thing
+        adapter.deny self, thing
+      end
+    end
+
+    # Internal: Remove an actor or group from the explicit deny list.
+    #
+    # Returns the result of Adapter#allow.
+    def allow(thing)
+      instrument(:allow) do |payload|
+        adapter.add self
+        payload[:thing] = thing
+        adapter.allow self, thing
+      end
+    end
+
+    # Internal: Check if any actor in the context is explicitly denied,
+    # either directly or through a denied group. Deny is aggregated across
+    # all actors in the check: a single denied actor denies the whole check.
+    #
+    # Returns true if any actor is denied, false otherwise.
+    def denied?(context)
+      return false unless context.actors?
+
+      denied_actors = context.values.denied_actors
+      denied_groups = context.values.denied_groups
+      return false if denied_actors.empty? && denied_groups.empty?
+
+      context.actors.any? do |actor|
+        denied_actors.include?(actor.value) ||
+          denied_groups.any? { |name| Flipper.group(name).match?(actor, context) }
+      end
+    end
 
     # Internal: Mirrors a trusted remote expression during adapter sync,
     # including legacy expressions that predate empty-group validation.

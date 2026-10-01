@@ -18,6 +18,8 @@ module Flipper
         :get_all,
         :enable,
         :disable,
+        :deny,
+        :allow,
       ].freeze
 
       attr_reader :adapter

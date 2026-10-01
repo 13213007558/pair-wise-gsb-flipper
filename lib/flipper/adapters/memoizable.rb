@@ -118,6 +118,16 @@ module Flipper
       end
 
       # Public
+      def deny(feature, thing)
+        @adapter.deny(feature, thing).tap { expire_feature(feature) }
+      end
+
+      # Public
+      def allow(feature, thing)
+        @adapter.allow(feature, thing).tap { expire_feature(feature) }
+      end
+
+      # Public
       def read_only?
         @adapter.read_only?
       end

@@ -19,4 +19,11 @@ module Flipper
       super(message || default)
     end
   end
+
+  # Raised when an adapter does not support explicit deny lists.
+  class DenyNotSupported < Error
+    def initialize(message = nil)
+      super(message || "adapter does not support deny lists")
+    end
+  end
 end
