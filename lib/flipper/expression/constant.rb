@@ -16,6 +16,12 @@ module Flipper
         value
       end
 
+      # Internal: The explanation node for this constant. See
+      # Expression#explain.
+      def explain(_context = {})
+        Explanation::ExpressionNode.new(name: "Constant", result: value)
+      end
+
       def eql?(other)
         other.is_a?(self.class) && other.value == value
       end

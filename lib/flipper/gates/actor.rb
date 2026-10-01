@@ -23,13 +23,26 @@ module Flipper
       #
       # Returns true if gate open for actor, false if not.
       def open?(context)
-        return false unless context.actors?
+        return context.explain_gate(self, false, "no actors were provided") unless context.actors?
 
         enabled_actors = context.values.actors
-        return false if enabled_actors.empty?
+        if enabled_actors.empty?
+          return context.explain_gate(self, false, "no actors are enabled for this feature")
+        end
 
-        context.actors.any? do |actor|
+        matching = context.actors.select do |actor|
           enabled_actors.include?(actor.value)
+        end
+
+        if matching.empty?
+          context.explain_gate(self, false, "no actor is in the enabled actors set")
+        else
+          context.explain_gate(
+            self,
+            true,
+            "actor #{matching.map(&:value).join(', ')} is in the enabled actors set",
+            matching_actors: matching.map(&:value)
+          )
         end
       end
 

@@ -72,6 +72,29 @@ Flipper.enable_percentage_of_actors :search, 2
 
 Read more about [getting started with Flipper](https://flippercloud.io/docs?utm_source=oss&utm_medium=readme&utm_campaign=getting_started) and [enabling features](https://flippercloud.io/docs/features?utm_source=oss&utm_medium=readme&utm_campaign=enabling_features).
 
+### Explaining a check
+
+When you need to know *why* a feature is enabled or disabled for someone (e.g. a support request), use `explain`. It performs a single evaluation and returns a `Flipper::Explanation` describing exactly what happened: each gate checked (gates skipped because an earlier gate matched are marked short-circuited), the expression nodes evaluated (Any/All branches that were never executed are marked too), the actor attributes used, the actual values of time and random conditions, and any circular `FeatureEnabled` dependency paths.
+
+```ruby
+explanation = Flipper.explain(:search, current_user)
+explanation.result    # same value enabled? would return, from the same evaluation
+explanation.gates     # each gate: open?, reason, value, short_circuited?
+explanation.actors    # actor id and properties used
+explanation.cycles    # circular FeatureEnabled dependency paths, e.g. [["a", "b", "a"]]
+explanation.to_h      # the whole thing as a plain Hash
+```
+
+Sensitive actor properties can be hidden from explanations:
+
+```ruby
+Flipper.configure do |config|
+  config.explain_hidden_properties = [:email]
+end
+# or per call:
+Flipper.explain(:search, current_user, hidden_properties: [:email])
+```
+
 ## Flipper Cloud
 
 Like Flipper and want more? Check out [Flipper Cloud](https://www.flippercloud.io?utm_source=oss&utm_medium=readme&utm_campaign=check_out), which comes with:

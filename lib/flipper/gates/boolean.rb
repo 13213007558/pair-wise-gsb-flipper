@@ -24,7 +24,9 @@ module Flipper
       # Returns true if explicitly set to true, false if explicitly set to false
       # or nil if not explicitly set.
       def open?(context)
-        context.values.boolean
+        value = context.values.boolean
+        reason = value ? "boolean gate is fully enabled" : "boolean gate is disabled"
+        context.explain_gate(self, value, reason)
       end
 
       def wrap(thing)

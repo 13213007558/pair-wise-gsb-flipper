@@ -3,6 +3,7 @@ require 'flipper/type'
 require 'flipper/gate'
 require 'flipper/feature_check_context'
 require 'flipper/gate_values'
+require 'flipper/explainer'
 
 module Flipper
   class Feature
@@ -107,6 +108,50 @@ module Flipper
         else
           false
         end
+      end
+    end
+
+    # Public: Explains why this feature is enabled or disabled for zero or
+    # more actors. Performs a single evaluation and records it as it goes:
+    # each gate checked (gates after the first open one are marked
+    # short-circuited), the expression nodes evaluated (branches skipped by
+    # Any/All short-circuiting are marked), the actor attributes used, the
+    # actual values of time and random conditions, and any circular
+    # FeatureEnabled dependency paths. The explanation always comes from the
+    # same evaluation that produced the result.
+    #
+    # actors - zero or more actors to check, same as #enabled?.
+    # hidden_properties - actor property names to mask in the explanation.
+    #                     Defaults to
+    #                     Flipper.configuration.explain_hidden_properties.
+    #
+    # Returns a Flipper::Explanation.
+    def explain(*actors, hidden_properties: nil)
+      actors = wrap_actors(actors)
+      hidden_properties ||= Flipper.configuration.explain_hidden_properties
+
+      instrument(:explain, thing: actors&.first, actors: actors) do |payload|
+        context = FeatureCheckContext.new(
+          feature_name: @name,
+          values: gate_values,
+          actors: actors
+        )
+        explainer = Explainer.new(actors: actors, hidden_properties: hidden_properties)
+        context.recorder = explainer
+
+        open_gate = nil
+        Explainer.activate(explainer) do
+          gates.each do |gate|
+            if open_gate
+              explainer.skip_gate(gate, "not evaluated: #{open_gate.name} gate already opened the feature")
+            elsif gate.open?(context)
+              open_gate = gate
+            end
+          end
+        end
+
+        payload[:gate_name] = open_gate.name if open_gate
+        explainer.to_explanation(feature_name: @name, result: !open_gate.nil?)
       end
     end
 

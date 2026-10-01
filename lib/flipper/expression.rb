@@ -1,3 +1,4 @@
+require "flipper/explanation"
 require "flipper/expression/builder"
 require "flipper/expression/constant"
 
@@ -46,6 +47,54 @@ module Flipper
       else
         function.call(*args.map {|arg| arg.evaluate(context) })
       end
+    end
+
+    # Internal: Like #evaluate, but returns a
+    # Flipper::Explanation::ExpressionNode tree describing exactly what this
+    # evaluation did. Any/All groups stop evaluating as soon as their result
+    # is known; branches that were never executed are included in the tree
+    # marked as short-circuited. Time and random nodes record the actual
+    # value used as their result, and FeatureEnabled nodes record circular
+    # dependency paths when a cycle is detected.
+    def explain(context = {})
+      return explain_group(context) if group?
+
+      explainer = context[:explainer]
+      child_nodes = args.map { |arg| explain_child(arg, context) }
+      values = child_nodes.map(&:result)
+      cycles_before = explainer ? explainer.cycles.length : 0
+
+      result = if call_with_context?
+        function.call(*values, context: context)
+      else
+        function.call(*values)
+      end
+
+      details = {}
+      display_result = Explanation::ExpressionNode::UNSET
+
+      case name
+      when "Property"
+        key = values.first
+        details[:key] = key.to_s
+        if explainer && explainer.hidden_property?(key)
+          details[:hidden] = true
+          display_result = Explanation::HIDDEN
+        end
+      when "FeatureEnabled"
+        details[:feature] = values.first.to_s
+        if explainer && explainer.cycles.length > cycles_before
+          details[:cycle] = explainer.cycles.last
+        end
+      end
+
+      Explanation::ExpressionNode.new(
+        name: name,
+        args: child_nodes,
+        result: result,
+        details: details,
+        display_result: display_result
+      )
     end
 
     def eql?(other)
@@ -141,6 +190,46 @@ module Flipper
     end
 
     private
+
+    def explain_child(arg, context)
+      if arg.respond_to?(:explain)
+        arg.explain(context)
+      else
+        Explanation::ExpressionNode.new(name: "Constant", result: arg)
+      end
+    end
+
+    # Internal: Evaluates an Any/All group lazily, marking branches after
+    # the result is known as short-circuited instead of evaluating them.
+    def explain_group(context)
+      child_nodes = []
+      decided = false
+      result = all?
+
+      args.each do |arg|
+        if decided
+          child_nodes << Explanation::ExpressionNode.unevaluated(arg)
+          next
+        end
+
+        node = explain_child(arg, context)
+        child_nodes << node
+
+        if all?
+          unless node.result
+            result = false
+            decided = true
+          end
+        else
+          if node.result
+            result = true
+            decided = true
+          end
+        end
+      end
+
+      Explanation::ExpressionNode.new(name: name, args: child_nodes, result: result)
+    end
 
     def call_with_context?
       function.method(:call).parameters.any? do |type, name|

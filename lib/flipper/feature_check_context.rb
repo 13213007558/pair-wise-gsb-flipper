@@ -10,6 +10,10 @@ module Flipper
     # Public: The actors we want to know if a feature is enabled for.
     attr_reader :actors
 
+    # Internal: When set (by Feature#explain), gates record what they
+    # checked into this explainer as part of the evaluation.
+    attr_accessor :recorder
+
     def initialize(feature_name:, values:, actors:)
       @feature_name = feature_name
       @values = values
@@ -18,6 +22,22 @@ module Flipper
 
     def actors?
       !@actors.nil? && !@actors.empty?
+    end
+
+    # Internal: Records the outcome of a gate check when explaining. Always
+    # returns result unchanged so gates can use it as their return value.
+    def explain_gate(gate, result, reason, details = {})
+      if (recorder = @recorder)
+        value = values.respond_to?(gate.key) ? values.public_send(gate.key) : nil
+        recorder.record_gate(
+          gate: gate,
+          value: value,
+          result: result,
+          reason: reason,
+          details: details
+        )
+      end
+      result
     end
 
     # Public: Convenience method for groups value like Feature has.

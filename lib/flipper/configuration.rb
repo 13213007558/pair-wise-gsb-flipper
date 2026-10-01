@@ -5,6 +5,22 @@ module Flipper
       @default = -> { Flipper.new(@builder.to_adapter) }
     end
 
+    # Public: Actor property names that are hidden (masked as "[HIDDEN]") in
+    # explanations returned by Feature#explain / Flipper.explain. Useful for
+    # keeping sensitive actor data (emails, names, etc.) out of support
+    # output. Defaults to none.
+    #
+    #   Flipper.configure do |config|
+    #     config.explain_hidden_properties = [:email]
+    #   end
+    #
+    # Returns an Array of String or Symbol property names.
+    attr_writer :explain_hidden_properties
+
+    def explain_hidden_properties
+      @explain_hidden_properties ||= []
+    end
+
     # The default adapter to use.
     #
     # Pass a block to assign the adapter, and invoke without a block to

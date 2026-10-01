@@ -24,9 +24,17 @@ module Flipper
       # Returns true if gate open for thing, false if not.
       def open?(context)
         percentage = context.values.percentage_of_time
-        return false if percentage <= 0
-        return true if percentage >= 100
-        rand < (percentage / 100.0)
+        if percentage <= 0
+          return context.explain_gate(self, false, "percentage of time is #{percentage}")
+        end
+        if percentage >= 100
+          return context.explain_gate(self, true, "percentage of time is 100")
+        end
+
+        random = rand
+        result = random < (percentage / 100.0)
+        reason = "random roll #{random} is #{result ? 'below' : 'not below'} " +          "#{percentage / 100.0} (percentage of time #{percentage})"
+        context.explain_gate(self, result, reason, percentage: percentage, random: random)
       end
 
       def protects?(thing)

@@ -26,8 +26,15 @@ module Flipper
       # Returns true if gate open for thing, false if not.
       def open?(context)
         data = context.values.expression
-        return false if data.nil? || data.empty?
+        if data.nil? || data.empty?
+          return context.explain_gate(self, false, "no expression is set for this feature")
+        end
+
         expression = Flipper::Expression.build(data)
+
+        if context.recorder
+          return explain_open?(context, expression, data)
+        end
 
         if context.actors.nil? || context.actors.empty?
           !!expression.evaluate(feature_name: context.feature_name, properties: DEFAULT_PROPERTIES, actor: nil)
@@ -50,6 +57,37 @@ module Flipper
 
       # Internal
       DEFAULT_PROPERTIES = {}.freeze
+
+      # Internal: Evaluates the expression once, recording the node tree of
+      # exactly what was evaluated into the context's recorder.
+      def explain_open?(context, expression, data)
+        nodes = []
+
+        result = if context.actors.nil? || context.actors.empty?
+          node = expression.explain(
+            feature_name: context.feature_name,
+            properties: DEFAULT_PROPERTIES,
+            actor: nil,
+            explainer: context.recorder
+          )
+          nodes << node
+          !!node.result
+        else
+          context.actors.any? do |actor|
+            node = expression.explain(
+              feature_name: context.feature_name,
+              properties: properties(actor),
+              actor: actor,
+              explainer: context.recorder
+            )
+            nodes << node
+            !!node.result
+          end
+        end
+
+        reason = result ? "expression evaluated to true" : "expression evaluated to false"
+        context.explain_gate(self, result, reason, expression: data, nodes: nodes)
+      end
 
       def properties(actor)
         return DEFAULT_PROPERTIES if actor.nil?

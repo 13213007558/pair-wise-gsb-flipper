@@ -40,6 +40,16 @@ module Flipper
       feature(name).enabled?(*args)
     end
 
+    # Public: Explain why a feature is enabled or disabled.
+    #
+    # name - The String or Symbol name of the feature.
+    # args - The args passed through to the feature instance explain call.
+    #
+    # Returns a Flipper::Explanation.
+    def explain(name, *args, **kwargs)
+      feature(name).explain(*args, **kwargs)
+    end
+
     # Public: Enable a feature.
     #
     # name - The String or Symbol name of the feature.

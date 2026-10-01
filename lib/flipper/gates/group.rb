@@ -23,12 +23,33 @@ module Flipper
       #
       # Returns true if gate open for thing, false if not.
       def open?(context)
-        return false unless context.actors?
+        return context.explain_gate(self, false, "no actors were provided") unless context.actors?
 
-        context.values.groups.any? do |name|
-          context.actors.any? do |actor|
-            Flipper.group(name).match?(actor, context)
+        match = nil
+        context.values.groups.each do |name|
+          actor = context.actors.find do |candidate|
+            Flipper.group(name).match?(candidate, context)
           end
+          if actor
+            match = [name, actor]
+            break
+          end
+        end
+
+        if match
+          group_name, actor = match
+          context.explain_gate(
+            self,
+            true,
+            "actor #{actor.value} matches group #{group_name}",
+            group: group_name,
+            actor: actor.value
+          )
+        else
+          reason = context.values.groups.empty? ?
+            "no groups are enabled for this feature" :
+            "no actor matches any enabled group"
+          context.explain_gate(self, false, reason)
         end
       end
 
