@@ -163,6 +163,53 @@ module Flipper
       feature(name).disable_group(group)
     end
 
+    # Public: Explicitly deny a feature for an actor. Deny rules take
+    # precedence over every other gate (boolean, percentage, expression).
+    #
+    # name - The String or Symbol name of the feature.
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Feature#enable.
+    def enable_deny_actor(name, actor)
+      feature(name).enable_deny_actor(actor)
+    end
+
+    # Public: Remove an actor from a feature's deny list.
+    #
+    # name - The String or Symbol name of the feature.
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of Feature#disable.
+    def disable_deny_actor(name, actor)
+      feature(name).disable_deny_actor(actor)
+    end
+
+    # Public: Explicitly deny a feature for every actor in a group. Deny
+    # rules take precedence over every other gate (boolean, percentage,
+    # expression).
+    #
+    # name - The String or Symbol name of the feature.
+    # group - a Flipper::Types::Group instance or a String or Symbol name
+    #         of a registered group.
+    #
+    # Returns result of Feature#enable.
+    def enable_deny_group(name, group)
+      feature(name).enable_deny_group(group)
+    end
+
+    # Public: Remove a group from a feature's deny list.
+    #
+    # name - The String or Symbol name of the feature.
+    # group - a Flipper::Types::Group instance or a String or Symbol name
+    #         of a registered group.
+    #
+    # Returns result of Feature#disable.
+    def disable_deny_group(name, group)
+      feature(name).disable_deny_group(group)
+    end
+
     # Public: Disable a feature a percentage of time.
     #
     # name - The String or Symbol name of the feature.

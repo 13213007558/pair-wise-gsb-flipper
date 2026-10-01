@@ -38,6 +38,14 @@ module Flipper
         end
       end
 
+      def supports_deny?
+        @adapter.supports_deny?
+      end
+
+      def unwrap
+        @adapter.unwrap
+      end
+
       # Override this method to customize the behavior of all delegated methods, and just yield to
       # the block to call the wrapped adapter.
       if RUBY_VERSION >= '3.0'

@@ -122,6 +122,14 @@ module Flipper
         @adapter.read_only?
       end
 
+      def supports_deny?
+        @adapter.supports_deny?
+      end
+
+      def unwrap
+        @adapter.unwrap
+      end
+
       def import(source)
         @adapter.import(source).tap { cache.clear if memoizing? }
       end

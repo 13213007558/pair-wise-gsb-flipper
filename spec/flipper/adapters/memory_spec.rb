@@ -37,6 +37,40 @@ RSpec.describe Flipper::Adapters::Memory do
     })
   end
 
+  it "persists deny actors and groups through boolean enable, disable and clear" do
+    flipper = Flipper.new(subject)
+    flipper.enable_deny_actor :search, Flipper::Actor.new('User;1')
+    flipper.enable_deny_group :search, :banned
+
+    flipper.enable :search
+    expect(subject.get(flipper[:search])[:deny_actors]).to eq(Set['User;1'])
+    expect(subject.get(flipper[:search])[:deny_groups]).to eq(Set['banned'])
+
+    flipper.disable :search
+    expect(subject.get(flipper[:search])[:deny_actors]).to eq(Set['User;1'])
+    expect(subject.get(flipper[:search])[:deny_groups]).to eq(Set['banned'])
+
+    flipper.feature(:search).clear
+    expect(subject.get(flipper[:search])[:deny_actors]).to eq(Set['User;1'])
+    expect(subject.get(flipper[:search])[:deny_groups]).to eq(Set['banned'])
+  end
+
+  it "exports and re-imports deny records" do
+    flipper = Flipper.new(subject)
+    flipper.enable :search
+    flipper.enable_deny_actor :search, Flipper::Actor.new('User;1')
+
+    export = subject.export
+    imported = described_class.new
+    imported.import(export)
+
+    expect(imported.get(flipper[:search])[:deny_actors]).to eq(Set['User;1'])
+  end
+
+  it "advertises deny support" do
+    expect(subject.supports_deny?).to be(true)
+  end
+
   it "uses its inherited Mutex safely after a fork" do
     skip "Process.fork is not supported" unless Process.respond_to?(:fork)
 

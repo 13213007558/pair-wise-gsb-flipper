@@ -1332,4 +1332,126 @@ RSpec.describe Flipper::Feature do
             ])
     end
   end
+
+  describe 'deny actors and groups (emergency kill switch)' do
+    let(:actor) { Flipper::Actor.new('User;1') }
+    let(:other_actor) { Flipper::Actor.new('User;2') }
+
+    before do
+      Flipper.register(:banned) do |check_actor|
+        check_actor.respond_to?(:banned?) && check_actor.banned?
+      end
+    end
+
+    after do
+      Flipper.unregister_groups
+    end
+
+    it 'denies an actor even when the boolean gate is fully on' do
+      subject.enable
+      subject.enable_deny_actor(actor)
+
+      expect(subject.enabled?(actor)).to be(false)
+      expect(subject.enabled?(other_actor)).to be(true)
+    end
+
+    it 'denies an actor even when percentage of actors is 100' do
+      subject.enable_percentage_of_actors(100)
+      subject.enable_deny_actor(actor)
+
+      expect(subject.enabled?(actor)).to be(false)
+      expect(subject.enabled?(other_actor)).to be(true)
+    end
+
+    it 'denies an actor even when an expression matches' do
+      subject.enable_expression(Flipper.property(:plan).eq('pro'))
+      properties = { 'plan' => 'pro' }
+      pro_actor = Struct.new(:flipper_id, :flipper_properties).new('User;3', properties)
+      denied_pro_actor = Struct.new(:flipper_id, :flipper_properties).new('User;4', properties)
+      subject.enable_deny_actor(denied_pro_actor)
+
+      expect(subject.enabled?(pro_actor)).to be(true)
+      expect(subject.enabled?(denied_pro_actor)).to be(false)
+    end
+
+    it 'denies every member of a denied group' do
+      subject.enable
+      subject.enable_deny_group(:banned)
+      banned = Object.new
+      def banned.flipper_id; 'User;9'; end
+      def banned.banned?; true; end
+
+      expect(subject.enabled?(other_actor)).to be(true)
+      expect(subject.enabled?(banned)).to be(false)
+    end
+
+    it 'aggregates multiple actors with deny-wins: any denied actor vetoes the check' do
+      subject.enable
+      subject.enable_deny_actor(actor)
+
+      expect(subject.enabled?(other_actor, Flipper::Actor.new('User;3'))).to be(true)
+      expect(subject.enabled?(actor, other_actor)).to be(false)
+    end
+
+    it 'restores normal evaluation after the deny record is removed' do
+      subject.enable
+      subject.enable_deny_actor(actor)
+      expect(subject.enabled?(actor)).to be(false)
+
+      subject.disable_deny_actor(actor)
+      expect(subject.enabled?(actor)).to be(true)
+
+      subject.enable_deny_group(:banned)
+      banned = Object.new
+      def banned.flipper_id; 'User;9'; end
+      def banned.banned?; true; end
+      expect(subject.enabled?(banned)).to be(false)
+
+      subject.disable_deny_group(:banned)
+      expect(subject.enabled?(banned)).to be(true)
+    end
+
+    it 'keeps deny records when the boolean gate is enabled' do
+      subject.enable_deny_actor(actor)
+      subject.enable
+
+      expect(subject.enabled?(actor)).to be(false)
+      expect(subject.enabled?(other_actor)).to be(true)
+    end
+
+    it 'keeps deny records when the feature is cleared' do
+      subject.enable
+      subject.enable_deny_actor(actor)
+      subject.clear
+
+      expect(subject.enabled?(actor)).to be(false)
+      expect(subject.enabled?(other_actor)).to be(false)
+      expect(subject.deny_actors_value).to eq(Set['User;1'])
+    end
+
+    it 'exposes deny values' do
+      subject.enable_deny_actor(actor)
+      subject.enable_deny_group(:banned)
+
+      expect(subject.deny_actors_value).to eq(Set['User;1'])
+      expect(subject.deny_groups_value).to eq(Set['banned'])
+    end
+
+    it 'does not count deny gates among enabled/allow gates' do
+      subject.enable_deny_actor(actor)
+      expect(subject.enabled_gate_names).not_to include(:deny_actor, :deny_group)
+    end
+
+    it 'raises when the adapter cannot persist deny gates' do
+      unsupported = Class.new do
+        include Flipper::Adapter
+        def get(_feature); default_config; end
+        def add(_feature); true; end
+      end.new
+      feature = described_class.new(:search, unsupported)
+
+      expect { feature.enable_deny_actor(actor) }.to raise_error(Flipper::DenyNotSupported)
+      expect { feature.enable_deny_group(:banned) }.to raise_error(Flipper::DenyNotSupported)
+    end
+  end
 end

@@ -67,6 +67,14 @@ module Flipper
       rescue *@errors
         false
       end
+
+      def supports_deny?
+        @adapter.supports_deny?
+      end
+
+      def unwrap
+        @adapter.unwrap
+      end
     end
   end
 end

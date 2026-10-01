@@ -80,6 +80,14 @@ module Flipper
           @secondary.disable(feature, gate, thing) if @dual_write
         end
       end
+
+      def supports_deny?
+        if @dual_write
+          @primary.supports_deny? && @secondary.supports_deny?
+        else
+          @primary.supports_deny?
+        end
+      end
     end
   end
 end

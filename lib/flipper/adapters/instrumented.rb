@@ -25,6 +25,14 @@ module Flipper
         @instrumenter = options.fetch(:instrumenter, Instrumenters::Noop)
       end
 
+      def supports_deny?
+        @adapter.supports_deny?
+      end
+
+      def unwrap
+        @adapter.unwrap
+      end
+
       # Public
       def features
         default_payload = {

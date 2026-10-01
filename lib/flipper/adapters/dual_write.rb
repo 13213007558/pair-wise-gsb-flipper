@@ -58,6 +58,11 @@ module Flipper
           @local.disable(feature, gate, thing)
         end
       end
+
+      # Writes go to both adapters, so both must support deny gates.
+      def supports_deny?
+        @local.supports_deny? && @remote.supports_deny?
+      end
     end
   end
 end

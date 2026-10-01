@@ -111,6 +111,16 @@ module Flipper
         result
       end
 
+      # Public: Delegates to the wrapped adapter; cache stores do not add
+      # storage capabilities of their own.
+      def supports_deny?
+        @adapter.supports_deny?
+      end
+
+      def unwrap
+        @adapter.unwrap
+      end
+
       # Public
       def enable(feature, gate, thing)
         result = @adapter.enable(feature, gate, thing)

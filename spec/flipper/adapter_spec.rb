@@ -9,6 +9,8 @@ RSpec.describe Flipper::Adapter do
       expression: nil,
       percentage_of_actors: nil,
       percentage_of_time: nil,
+      deny_actors: Set.new,
+      deny_groups: Set.new,
     }
   end
 
@@ -41,6 +43,20 @@ RSpec.describe Flipper::Adapter do
       destination_flipper.import(source_flipper)
       expect(destination_flipper[:search].boolean_value).to eq(true)
       expect(destination_flipper.features.map(&:key).sort).to eq(%w(search))
+    end
+
+    it 'imports deny actor and deny group records' do
+      Flipper.register(:banned) { |actor| actor.respond_to?(:banned?) && actor.banned? }
+      source_flipper.enable(:search)
+      source_flipper.enable_deny_actor(:search, Flipper::Actor.new('User;1'))
+      source_flipper.enable_deny_group(:search, :banned)
+
+      destination_flipper.import(source_flipper)
+
+      expect(destination_flipper[:search].deny_actors_value).to eq(Set['User;1'])
+      expect(destination_flipper[:search].deny_groups_value).to eq(Set['banned'])
+      expect(destination_flipper.enabled?(:search, Flipper::Actor.new('User;2'))).to be(true)
+      expect(destination_flipper.enabled?(:search, Flipper::Actor.new('User;1'))).to be(false)
     end
 
     it 'can import features that have been added but their state is off' do

@@ -17,6 +17,29 @@ RSpec.describe Flipper::Adapters::Memoizable do
     end
   end
 
+  describe '#supports_deny?' do
+    it 'delegates to the wrapped adapter' do
+      expect(subject.supports_deny?).to be(true)
+
+      unsupported = Class.new do
+        include Flipper::Adapter
+        def get(_feature); default_config; end
+      end.new
+      expect(described_class.new(unsupported).supports_deny?).to be(false)
+    end
+  end
+
+  it 'expires the memoized gate values after a deny write' do
+    flipper = Flipper.new(subject)
+    subject.memoize = true
+    actor = Flipper::Actor.new('User;1')
+    flipper.enable(:search)
+    expect(flipper.enabled?(:search, actor)).to be(true)
+
+    flipper.enable_deny_actor(:search, actor)
+    expect(flipper.enabled?(:search, actor)).to be(false)
+  end
+
   describe '#memoize=' do
     it 'sets value' do
       subject.memoize = true

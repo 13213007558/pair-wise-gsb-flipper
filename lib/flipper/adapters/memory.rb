@@ -23,6 +23,11 @@ module Flipper
         synchronize { @source.keys }.to_set
       end
 
+      # Public: Memory persists the full gate hash, including deny gates.
+      def supports_deny?
+        true
+      end
+
       # Public: Adds a feature to the set of known features.
       def add(feature)
         synchronize { @source[feature.key] ||= default_config }
@@ -38,7 +43,10 @@ module Flipper
 
       # Public: Clears all the gate values for a feature.
       def clear(feature)
-        synchronize { @source[feature.key] = default_config }
+        synchronize do
+          denied = denied_gates(@source[feature.key])
+          @source[feature.key] = default_config.merge(denied)
+        end
         true
       end
 
@@ -64,20 +72,24 @@ module Flipper
       # Public
       def enable(feature, gate, thing)
         synchronize do
-          @source[feature.key] ||= default_config
-
           case gate.data_type
           when :boolean
-            @source[feature.key] = default_config
+            # Enabling/disabling the boolean gate resets the regular gates
+            # but must preserve explicit emergency deny records.
+            denied = denied_gates(@source[feature.key])
+            @source[feature.key] = default_config.merge(denied)
             @source[feature.key][gate.key] = thing.value.to_s
           when :integer
+            @source[feature.key] ||= default_config
             @source[feature.key][gate.key] = thing.value.to_s
           when :set
+            @source[feature.key] ||= default_config
             @source[feature.key][gate.key] << thing.value.to_s
           when :json
+            @source[feature.key] ||= default_config
             @source[feature.key][gate.key] = thing.value
           else
-            raise "#{gate} is not supported by this adapter yet"
+            raise Flipper::Adapters::UnsupportedGateDataType.new(gate.data_type)
           end
 
           true
@@ -87,19 +99,21 @@ module Flipper
       # Public
       def disable(feature, gate, thing)
         synchronize do
-          @source[feature.key] ||= default_config
-
           case gate.data_type
           when :boolean
-            @source[feature.key] = default_config
+            denied = denied_gates(@source[feature.key])
+            @source[feature.key] = default_config.merge(denied)
           when :integer
+            @source[feature.key] ||= default_config
             @source[feature.key][gate.key] = thing.value.to_s
           when :set
+            @source[feature.key] ||= default_config
             @source[feature.key][gate.key].delete thing.value.to_s
           when :json
+            @source[feature.key] ||= default_config
             @source[feature.key].delete(gate.key)
           else
-            raise "#{gate} is not supported by this adapter yet"
+            raise Flipper::Adapters::UnsupportedGateDataType.new(gate.data_type)
           end
 
           true
@@ -124,6 +138,19 @@ module Flipper
       end
 
       private
+
+      DENY_GATE_KEYS = [:deny_actors, :deny_groups].freeze
+      private_constant :DENY_GATE_KEYS
+
+      # Internal: Extracts the emergency deny sets from a stored config so
+      # they survive a boolean reset.
+      def denied_gates(config)
+        return {} if config.nil?
+
+        DENY_GATE_KEYS.each_with_object({}) do |key, denied|
+          denied[key] = config[key] unless config[key].nil? || config[key].empty?
+        end
+      end
 
       def synchronize(&block)
         if @lock

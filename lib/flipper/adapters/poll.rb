@@ -12,7 +12,7 @@ module Flipper
 
       attr_reader :adapter, :poller
 
-      def_delegators :synced_adapter, :features, :get, :get_multi, :get_all, :add, :remove, :clear, :enable, :disable
+      def_delegators :synced_adapter, :features, :get, :get_multi, :get_all, :add, :remove, :clear, :enable, :disable, :supports_deny?
 
       def initialize(poller, adapter)
         @adapter = adapter

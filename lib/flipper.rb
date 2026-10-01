@@ -61,6 +61,8 @@ module Flipper
                  :expression, :add_expression, :remove_expression,
                  :enable_actor, :disable_actor,
                  :enable_group, :disable_group,
+                 :enable_deny_actor, :disable_deny_actor,
+                 :enable_deny_group, :disable_deny_group,
                  :enable_percentage_of_actors, :disable_percentage_of_actors,
                  :enable_percentage_of_time, :disable_percentage_of_time,
                  :features, :feature, :[], :preload, :preload_all,
@@ -213,6 +215,8 @@ require 'flipper/expression'
 require 'flipper/type'
 require 'flipper/types/actor'
 require 'flipper/types/boolean'
+require 'flipper/types/deny_actor'
+require 'flipper/types/deny_group'
 require 'flipper/types/group'
 require 'flipper/types/percentage'
 require 'flipper/types/percentage_of_actors'

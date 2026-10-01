@@ -77,6 +77,32 @@ RSpec.describe Flipper::GateValues do
     end
   end
 
+  {
+    nil => Set.new,
+    '' => Set.new,
+    Set.new(['User;1']) => Set.new(['User;1']),
+    ['User;1'] => Set.new(['User;1']),
+  }.each do |value, expected|
+    context "with #{value.inspect} deny actors" do
+      it "returns #{expected}" do
+        expect(described_class.new(deny_actors: value).deny_actors).to eq(expected)
+      end
+    end
+  end
+
+  {
+    nil => Set.new,
+    '' => Set.new,
+    Set.new([:banned]) => Set.new([:banned]),
+    [:banned] => Set.new([:banned]),
+  }.each do |value, expected|
+    context "with #{value.inspect} deny groups" do
+      it "returns #{expected}" do
+        expect(described_class.new(deny_groups: value).deny_groups).to eq(expected)
+      end
+    end
+  end
+
   it 'raises argument error for percentage of time value that cannot be converted to an integer' do
     expect do
       described_class.new(percentage_of_time: ['asdf'])

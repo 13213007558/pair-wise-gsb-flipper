@@ -15,6 +15,8 @@ module Flipper
           expression: nil,
           percentage_of_actors: nil,
           percentage_of_time: nil,
+          deny_actors: Set.new,
+          deny_groups: Set.new,
         }
       end
 
@@ -26,6 +28,22 @@ module Flipper
 
     def read_only?
       false
+    end
+
+    # Public: Whether this adapter can persist explicit deny gates
+    # (deny_actors/deny_groups). Only adapters that store the full gate hash
+    # (currently Memory) support them; other adapters must raise instead of
+    # silently dropping an emergency deny record. Wrapper adapters that simply
+    # delegate writes (e.g. Memoizable, Instrumented, Failsafe, cache stores)
+    # override this to delegate to the wrapped adapter.
+    def supports_deny?
+      false
+    end
+
+    # Public: The innermost adapter in a wrapper stack. Non-wrapping adapters
+    # return themselves.
+    def unwrap
+      self
     end
 
     # Public: Get all features and gate values in one call. Defaults to one call

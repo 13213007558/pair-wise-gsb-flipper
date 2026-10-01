@@ -101,7 +101,15 @@ module Flipper
           actors: actors
         )
 
-        if open_gate = gates.detect { |gate| gate.open?(context) }
+        # Emergency deny rules veto every other gate: if ANY of the actors
+        # being checked is explicitly denied (by actor id or group), the
+        # feature is disabled for the whole check. Only when no deny gate
+        # matches do the regular boolean/percentage/expression gates decide,
+        # using their existing "open for any actor" aggregation.
+        if open_gate = deny_gates.detect { |gate| gate.open?(context) }
+          payload[:gate_name] = open_gate.name
+          false
+        elsif open_gate = allow_gates.detect { |gate| gate.open?(context) }
           payload[:gate_name] = open_gate.name
           true
         else
@@ -158,6 +166,52 @@ module Flipper
     # Returns result of enable.
     def enable_group(group)
       enable Types::Group.wrap(group)
+    end
+
+    # Public: Explicitly denies a feature for an actor (emergency kill
+    # switch). Takes precedence over boolean, percentage and expression
+    # gates. Use #disable_deny_actor to remove the deny.
+    #
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of enable.
+    def enable_deny_actor(actor)
+      deny_thing Types::DenyActor.wrap(actor)
+    end
+
+    # Public: Removes an actor from the feature's deny list, restoring
+    # normal boolean/percentage/expression evaluation for them.
+    #
+    # actor - a Flipper::Types::Actor instance or an object that responds
+    #         to flipper_id.
+    #
+    # Returns result of disable.
+    def disable_deny_actor(actor)
+      deny_thing Types::DenyActor.wrap(actor), enabled: false
+    end
+
+    # Public: Explicitly denies a feature for every actor in a group
+    # (emergency kill switch). Takes precedence over boolean, percentage
+    # and expression gates.
+    #
+    # group - a Flipper::Types::Group instance or a String or Symbol name
+    #         of a registered group.
+    #
+    # Returns result of enable.
+    def enable_deny_group(group)
+      deny_thing Types::DenyGroup.wrap(group)
+    end
+
+    # Public: Removes a group from the feature's deny list, restoring
+    # normal boolean/percentage/expression evaluation for its members.
+    #
+    # group - a Flipper::Types::Group instance or a String or Symbol name
+    #         of a registered group.
+    #
+    # Returns result of disable.
+    def disable_deny_group(group)
+      deny_thing Types::DenyGroup.wrap(group), enabled: false
     end
 
     # Public: Enables a feature a percentage of time.
@@ -258,7 +312,7 @@ module Flipper
     def state
       values = gate_values
       boolean = gate(:boolean)
-      non_boolean_gates = gates - [boolean]
+      non_boolean_gates = allow_gates - [boolean]
 
       if values.boolean || values.percentage_of_time == 100
         :on
@@ -317,6 +371,20 @@ module Flipper
       gate_values.groups
     end
 
+    # Public: Get the adapter value for the deny groups gate.
+    #
+    # Returns Set of String group names.
+    def deny_groups_value
+      gate_values.deny_groups
+    end
+
+    # Public: Get the adapter value for the deny actors gate.
+    #
+    # Returns Set of String flipper_id's.
+    def deny_actors_value
+      gate_values.deny_actors
+    end
+
     # Public: Get the adapter value for the expression gate.
     #
     # Returns expression.
@@ -357,7 +425,7 @@ module Flipper
     # Returns an Array of Flipper::Gate instances.
     def enabled_gates
       values = gate_values
-      gates.select { |gate| gate.enabled?(values.send(gate.key)) }
+      allow_gates.select { |gate| gate.enabled?(values.send(gate.key)) }
     end
 
     # Public: Get the names of the enabled gates.
@@ -371,7 +439,7 @@ module Flipper
     #
     # Returns an Array of Flipper::Gate instances.
     def disabled_gates
-      gates - enabled_gates
+      allow_gates - enabled_gates
     end
 
     # Public: Get the names of the disabled gates.
@@ -417,7 +485,20 @@ module Flipper
         percentage_of_actors: Gates::PercentageOfActors.new,
         percentage_of_time: Gates::PercentageOfTime.new,
         group: Gates::Group.new,
+        deny_actor: Gates::DenyActor.new,
+        deny_group: Gates::DenyGroup.new,
       }.freeze
+    end
+
+    # Private: Gates that can deny (veto) an enabled? check. Evaluated first.
+    def deny_gates
+      @deny_gates ||= [gates_hash[:deny_actor], gates_hash[:deny_group]].freeze
+    end
+
+    # Private: Gates that can allow an enabled? check. Evaluated only when no
+    # deny gate matches.
+    def allow_gates
+      @allow_gates ||= (gates - deny_gates).freeze
     end
 
     # Public: Find a gate by name.
@@ -438,6 +519,17 @@ module Flipper
     end
 
     private
+
+    # Internal: Writes or removes an emergency deny record. Adapters that
+    # cannot persist deny gates fail explicitly here, before any add/enable
+    # side effect, so deny records can never be silently dropped.
+    def deny_thing(thing, enabled: true)
+      unless adapter.supports_deny?
+        raise DenyNotSupported, adapter.unwrap
+      end
+
+      enabled ? enable(thing) : disable(thing)
+    end
 
     # Internal: Mirrors a trusted remote expression during adapter sync,
     # including legacy expressions that predate empty-group validation.

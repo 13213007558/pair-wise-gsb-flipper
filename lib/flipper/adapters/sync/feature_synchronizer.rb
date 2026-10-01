@@ -27,6 +27,11 @@ module Flipper
         def_delegator :@remote_gate_values, :percentage_of_time,
                       :remote_percentage_of_time
 
+        def_delegator :@local_gate_values, :deny_actors, :local_deny_actors
+        def_delegator :@local_gate_values, :deny_groups, :local_deny_groups
+        def_delegator :@remote_gate_values, :deny_actors, :remote_deny_actors
+        def_delegator :@remote_gate_values, :deny_groups, :remote_deny_groups
+
         def initialize(feature, local_gate_values, remote_gate_values)
           @feature = feature
           @local_gate_values = local_gate_values
@@ -34,6 +39,11 @@ module Flipper
         end
 
         def call
+          # Emergency deny records are independent of the other gates and
+          # must be reconciled in every case (including boolean on/off).
+          sync_deny_actors
+          sync_deny_groups
+
           if remote_disabled?
             return if local_disabled?
             @feature.disable
@@ -85,6 +95,26 @@ module Flipper
           remote_groups_removed = local_groups - remote_groups
           remote_groups_removed.each do |group_name|
             @feature.disable_group group_name
+          end
+        end
+
+        def sync_deny_actors
+          (remote_deny_actors - local_deny_actors).each do |flipper_id|
+            @feature.enable_deny_actor Actor.new(flipper_id)
+          end
+
+          (local_deny_actors - remote_deny_actors).each do |flipper_id|
+            @feature.disable_deny_actor Actor.new(flipper_id)
+          end
+        end
+
+        def sync_deny_groups
+          (remote_deny_groups - local_deny_groups).each do |group_name|
+            @feature.enable_deny_group group_name
+          end
+
+          (local_deny_groups - remote_deny_groups).each do |group_name|
+            @feature.disable_deny_group group_name
           end
         end
 

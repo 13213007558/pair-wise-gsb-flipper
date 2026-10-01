@@ -283,6 +283,30 @@ RSpec.describe Flipper::DSL do
     end
   end
 
+  describe '#enable_deny_actor/disable_deny_actor' do
+    it 'adds and removes an actor from the deny list' do
+      actor = Flipper::Actor.new(5)
+
+      expect(subject[:stats].deny_actors_value).to be_empty
+      subject.enable_deny_actor(:stats, actor)
+      expect(subject[:stats].deny_actors_value).to eq(Set['5'])
+
+      subject.disable_deny_actor(:stats, actor)
+      expect(subject[:stats].deny_actors_value).to be_empty
+    end
+  end
+
+  describe '#enable_deny_group/disable_deny_group' do
+    it 'adds and removes a group from the deny list' do
+      expect(subject[:stats].deny_groups_value).to be_empty
+      subject.enable_deny_group(:stats, :fives)
+      expect(subject[:stats].deny_groups_value).to eq(Set['fives'])
+
+      subject.disable_deny_group(:stats, :fives)
+      expect(subject[:stats].deny_groups_value).to be_empty
+    end
+  end
+
   describe '#enable_percentage_of_actors/disable_percentage_of_actors' do
     it 'enables and disables the feature for percentage of time' do
       expect(subject[:stats].percentage_of_actors_value).to be(0)

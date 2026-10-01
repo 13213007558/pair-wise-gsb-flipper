@@ -82,6 +82,8 @@ module Flipper
           result = get(feature)
           result[gate.key] = thing.value
           moneta[key(feature.key)] = result
+        else
+          raise ::Flipper::UnsupportedGateDataType.new(gate.data_type, self)
         end
         true
       end
@@ -109,6 +111,8 @@ module Flipper
           result = get(feature)
           result[gate.key] = nil
           moneta[key(feature.key)] = result
+        else
+          raise ::Flipper::UnsupportedGateDataType.new(gate.data_type, self)
         end
         true
       end
