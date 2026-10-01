@@ -19,9 +19,13 @@ module Flipper
     # options - The Hash of options.
     #           :instrumenter - What should be used to instrument all the things.
     #           :memoize - Should adapter be wrapped by memoize adapter or not.
+    #           :clock - What should be used to determine the current time for
+    #                    time-based gates (e.g. scheduled rollouts). Responds
+    #                    to #call (returning a Time) or #now. Defaults to Time.
     def initialize(adapter, options = {})
       @instrumenter = options.fetch(:instrumenter, Instrumenters::Noop)
       memoize = options.fetch(:memoize, true)
+      @clock = options[:clock]
       adapter = Adapters::Memoizable.new(adapter) if memoize
       @adapter = adapter
       # Concurrent::Map so a single DSL instance shared across threads (e.g. a
@@ -29,6 +33,9 @@ module Flipper
       # memoize features without a non-atomic Hash mutation racing.
       @memoized_features = Concurrent::Map.new
     end
+
+    # Public: The clock used by time-based gates. Defaults to Time.
+    attr_reader :clock
 
     # Public: Check if a feature is enabled.
     #
@@ -113,6 +120,17 @@ module Flipper
       feature(name).enable_percentage_of_actors(percentage)
     end
 
+    # Public: Enables a scheduled rollout curve for a feature.
+    #
+    # name - The String or Symbol name of the feature.
+    # schedule - a Flipper::RolloutSchedule or nodes (Array of
+    #            [time, percentage] pairs).
+    #
+    # Returns result of Feature#enable.
+    def enable_scheduled_rollout(name, schedule)
+      feature(name).enable_scheduled_rollout(schedule)
+    end
+
     # Public: Disable a feature.
     #
     # name - The String or Symbol name of the feature.
@@ -185,6 +203,15 @@ module Flipper
       feature(name).disable_percentage_of_actors
     end
 
+    # Public: Disable the scheduled rollout curve for a feature.
+    #
+    # name - The String or Symbol name of the feature.
+    #
+    # Returns result of Feature#disable.
+    def disable_scheduled_rollout(name)
+      feature(name).disable_scheduled_rollout
+    end
+
     # Public: Add a feature.
     #
     # name - The String or Symbol name of the feature.
@@ -223,7 +250,7 @@ module Flipper
       end
 
       @memoized_features.compute_if_absent(name.to_sym) do
-        Feature.new(name, @adapter, instrumenter: instrumenter)
+        Feature.new(name, @adapter, instrumenter: instrumenter, clock: clock)
       end
     end
 

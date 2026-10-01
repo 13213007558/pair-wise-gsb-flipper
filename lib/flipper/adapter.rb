@@ -15,6 +15,7 @@ module Flipper
           expression: nil,
           percentage_of_actors: nil,
           percentage_of_time: nil,
+          scheduled_rollout: nil,
         }
       end
 

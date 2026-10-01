@@ -17,6 +17,8 @@ module Flipper
                       :local_percentage_of_actors
         def_delegator :@local_gate_values, :percentage_of_time,
                       :local_percentage_of_time
+        def_delegator :@local_gate_values, :scheduled_rollout,
+                      :local_scheduled_rollout
 
         def_delegator :@remote_gate_values, :expression, :remote_expression
         def_delegator :@remote_gate_values, :boolean, :remote_boolean
@@ -26,6 +28,8 @@ module Flipper
                       :remote_percentage_of_actors
         def_delegator :@remote_gate_values, :percentage_of_time,
                       :remote_percentage_of_time
+        def_delegator :@remote_gate_values, :scheduled_rollout,
+                      :remote_scheduled_rollout
 
         def initialize(feature, local_gate_values, remote_gate_values)
           @feature = feature
@@ -47,6 +51,7 @@ module Flipper
             sync_expression
             sync_percentage_of_actors
             sync_percentage_of_time
+            sync_scheduled_rollout
           end
         end
 
@@ -98,6 +103,16 @@ module Flipper
           return if local_percentage_of_time == remote_percentage_of_time
 
           @feature.enable_percentage_of_time remote_percentage_of_time
+        end
+
+        def sync_scheduled_rollout
+          return if local_scheduled_rollout == remote_scheduled_rollout
+
+          if remote_scheduled_rollout.nil?
+            @feature.disable_scheduled_rollout
+          else
+            @feature.enable_scheduled_rollout remote_scheduled_rollout
+          end
         end
 
         def default_config

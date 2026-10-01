@@ -11,6 +11,7 @@ module Flipper
         @actor_gate = @feature.gate(:actor)
         @actors_gate = @feature.gate(:percentage_of_actors)
         @time_gate = @feature.gate(:percentage_of_time)
+        @scheduled_rollout_gate = @feature.gate(:scheduled_rollout)
 
         Flipper.register(:admins) do |actor|
           actor.respond_to?(:admin?) && actor.admin?
@@ -82,6 +83,23 @@ module Flipper
         assert_equal true, @adapter.disable(@feature, @expression_gate, basic_expression)
         result = @adapter.get(@feature)
         assert_nil result[:expression]
+      end
+
+      def test_can_enable_disable_and_get_value_for_scheduled_rollout_gate
+        nodes = [
+          ['2026-10-01T09:00:00.000000000Z', 5],
+          ['2026-10-01T12:00:00.000000000Z', 30],
+          ['2026-10-01T18:00:00.000000000Z', 80],
+        ]
+        scheduled = Flipper::Types::ScheduledRollout.new(nodes)
+
+        assert_equal true, @adapter.enable(@feature, @scheduled_rollout_gate, scheduled)
+        result = @adapter.get(@feature)
+        assert_equal nodes, result[:scheduled_rollout].to_a
+
+        assert_equal true, @adapter.disable(@feature, @scheduled_rollout_gate, Flipper::Types::ScheduledRollout.new(nil))
+        result = @adapter.get(@feature)
+        assert_nil result[:scheduled_rollout]
       end
 
       def test_can_enable_disable_get_value_for_group_gate

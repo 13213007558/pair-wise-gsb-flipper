@@ -10,10 +10,17 @@ module Flipper
     # Public: The actors we want to know if a feature is enabled for.
     attr_reader :actors
 
-    def initialize(feature_name:, values:, actors:)
+    def initialize(feature_name:, values:, actors:, clock: nil)
       @feature_name = feature_name
       @values = values
       @actors = actors
+      @clock = clock
+    end
+
+    # Public: The clock used to evaluate time-dependent gates. Responds to
+    # #call (returns a Time) or #now. Defaults to Time when unset.
+    def clock
+      @clock || Time
     end
 
     def actors?

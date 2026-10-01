@@ -63,6 +63,7 @@ module Flipper
                  :enable_group, :disable_group,
                  :enable_percentage_of_actors, :disable_percentage_of_actors,
                  :enable_percentage_of_time, :disable_percentage_of_time,
+                 :enable_scheduled_rollout, :disable_scheduled_rollout,
                  :features, :feature, :[], :preload, :preload_all,
                  :adapter, :adapter_stack, :add, :exist?, :remove, :import, :export,
                  :memoize=, :memoizing?, :read_only?,
@@ -201,6 +202,7 @@ require 'flipper/configuration'
 require 'flipper/dsl'
 require 'flipper/errors'
 require 'flipper/feature'
+require 'flipper/rollout_schedule'
 require 'flipper/gate'
 require 'flipper/instrumenters/memory'
 require 'flipper/instrumenters/noop'
@@ -217,6 +219,7 @@ require 'flipper/types/group'
 require 'flipper/types/percentage'
 require 'flipper/types/percentage_of_actors'
 require 'flipper/types/percentage_of_time'
+require 'flipper/types/scheduled_rollout'
 require 'flipper/typecast'
 require 'flipper/version'
 

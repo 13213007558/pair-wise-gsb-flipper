@@ -33,7 +33,13 @@ module Flipper
       @name = name
       @key = name.to_s
       @instrumenter = options.fetch(:instrumenter, Instrumenters::Noop)
+      @clock = options[:clock]
       @adapter = adapter
+    end
+
+    # Private: The clock used to evaluate time-based gates. Defaults to Time.
+    def clock
+      @clock || Time
     end
 
     # Public: Enable this feature for something.
@@ -98,7 +104,8 @@ module Flipper
         context = FeatureCheckContext.new(
           feature_name: @name,
           values: gate_values,
-          actors: actors
+          actors: actors,
+          clock: clock
         )
 
         if open_gate = gates.detect { |gate| gate.open?(context) }
@@ -180,6 +187,16 @@ module Flipper
       enable Types::PercentageOfActors.wrap(percentage)
     end
 
+    # Public: Enables a feature using a scheduled rollout curve.
+    #
+    # schedule - a Flipper::RolloutSchedule, or nodes (an Array of
+    #            [time, percentage] pairs) that RolloutSchedule understands.
+    #
+    # Returns result of enable.
+    def enable_scheduled_rollout(schedule)
+      enable Types::ScheduledRollout.wrap(schedule)
+    end
+
     # Public: Disables an expression for a feature.
     #
     # expression - an expression or Hash that can be converted to an expression.
@@ -252,6 +269,13 @@ module Flipper
     # Returns result of disable.
     def disable_percentage_of_actors
       disable Types::PercentageOfActors.new(0)
+    end
+
+    # Public: Disables the scheduled rollout for a feature.
+    #
+    # Returns result of disable.
+    def disable_scheduled_rollout
+      disable Types::ScheduledRollout.new(nil)
     end
 
     # Public: Returns state for feature (:on, :off, or :conditional).
@@ -345,6 +369,14 @@ module Flipper
       gate_values.percentage_of_actors
     end
 
+    # Public: Get the adapter value for the scheduled rollout gate.
+    #
+    # Returns the raw stored value (Array of [String time, Integer
+    # percentage] nodes) or nil.
+    def scheduled_rollout_value
+      gate_values.scheduled_rollout
+    end
+
     # Public: Get the adapter value for the percentage of time gate.
     #
     # Returns Integer greater than or equal to 0 and less than or equal to 100.
@@ -414,6 +446,7 @@ module Flipper
         boolean: Gates::Boolean.new,
         expression: Gates::Expression.new,
         actor: Gates::Actor.new,
+        scheduled_rollout: Gates::ScheduledRollout.new,
         percentage_of_actors: Gates::PercentageOfActors.new,
         percentage_of_time: Gates::PercentageOfTime.new,
         group: Gates::Group.new,

@@ -1,4 +1,5 @@
 require 'set'
+require 'time'
 require "flipper/serializers/json"
 require "flipper/serializers/gzip"
 
@@ -36,6 +37,23 @@ module Flipper
       value.to_f
     rescue NoMethodError
       raise ArgumentError, "#{value.inspect} cannot be converted to a float"
+    end
+
+    # Internal: Convert value to a UTC Time.
+    #
+    # Returns a Time representation of the value.
+    # Raises ArgumentError if conversion is not possible.
+    def self.to_time(value)
+      case value
+      when Time
+        value
+      when ->(v) { v.respond_to?(:to_time) }
+        value.to_time
+      when String
+        Time.iso8601(value)
+      else
+        raise ArgumentError, "#{value.inspect} cannot be converted to a Time"
+      end
     end
 
     # Internal: Convert value to a number.
