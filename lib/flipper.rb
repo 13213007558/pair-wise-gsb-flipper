@@ -68,6 +68,28 @@ module Flipper
                  :memoize=, :memoizing?, :read_only?,
                  :sync, :sync_secret # For Flipper::Cloud. Will error for OSS Flipper.
 
+  # Public: Build a multi-variant experiment. See Flipper::Experiment.
+  #
+  #   experiment = Flipper.experiment(
+  #     namespace: :search_layout,
+  #     variants: [
+  #       { name: :control, weight: 34 },
+  #       { name: :compact, weight: 33 },
+  #       { name: :expanded, weight: 33 },
+  #     ],
+  #     unassigned_result: :control,
+  #   )
+  #   experiment.result_for(actor) # => :control, :compact, :expanded, ...
+  #
+  # Returns a Flipper::Experiment.
+  def experiment(namespace:, variants:, unassigned_result: nil)
+    Experiment.new(
+      namespace: namespace,
+      variants: variants,
+      unassigned_result: unassigned_result,
+    )
+  end
+
   def any(*args)
     Expression.build({ Any: args.flatten })
   end
@@ -200,6 +222,7 @@ require 'flipper/adapter_builder'
 require 'flipper/configuration'
 require 'flipper/dsl'
 require 'flipper/errors'
+require 'flipper/experiment'
 require 'flipper/feature'
 require 'flipper/gate'
 require 'flipper/instrumenters/memory'

@@ -70,6 +70,38 @@ Flipper.enable_group :search, :admin
 Flipper.enable_percentage_of_actors :search, 2
 ```
 
+## Multi-Variant Experiments
+
+Use `Flipper.experiment` to split actors across multiple weighted variants
+(for example `control`, `compact`, and `expanded`). Assignment is stable per
+actor for a given namespace, so the same actor always sees the same variant.
+Each actor lands in at most one variant; actors outside the allocated weights
+receive the `unassigned_result`.
+
+```ruby
+experiment = Flipper.experiment(
+  namespace: :search_layout,
+  variants: [
+    { name: :control, weight: 34 },
+    { name: :compact, weight: 33 },
+    { name: :expanded, weight: 33 },
+  ],
+  unassigned_result: :control,
+)
+
+case experiment.result_for(current_user)
+when 'compact' then # ...
+when 'expanded' then # ...
+else # 'control' (or the unassigned result)
+end
+```
+
+Weights may total less than 100 (the remainder is unassigned) but never more.
+Negative weights and duplicate variant names raise
+`Flipper::Experiment::InvalidConfiguration`. Configuration round trips
+through `#to_json`/`Flipper::Experiment.from_json` without changing any
+actor's assignment.
+
 Read more about [getting started with Flipper](https://flippercloud.io/docs?utm_source=oss&utm_medium=readme&utm_campaign=getting_started) and [enabling features](https://flippercloud.io/docs/features?utm_source=oss&utm_medium=readme&utm_campaign=enabling_features).
 
 ## Flipper Cloud
