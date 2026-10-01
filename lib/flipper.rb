@@ -108,6 +108,10 @@ module Flipper
     Expression.build({ Time: value })
   end
 
+  def experiment(namespace:, variants:, unassigned:)
+    Experiment.new(namespace: namespace, variants: variants, unassigned: unassigned)
+  end
+
   def feature_enabled(name)
     Expression.build({ FeatureEnabled: name })
   end
@@ -216,8 +220,9 @@ require 'flipper/types/boolean'
 require 'flipper/types/group'
 require 'flipper/types/percentage'
 require 'flipper/types/percentage_of_actors'
-require 'flipper/types/percentage_of_time'
+require 'flipper/experiment'
 require 'flipper/typecast'
+require 'flipper/types/percentage_of_time'
 require 'flipper/version'
 
 # Eagerly initialize memoized module state while loading is still
