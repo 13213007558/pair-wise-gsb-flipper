@@ -1,6 +1,7 @@
 require 'flipper/errors'
 require 'flipper/type'
 require 'flipper/gate'
+require 'flipper/diagnosis'
 require 'flipper/feature_check_context'
 require 'flipper/gate_values'
 
@@ -108,6 +109,32 @@ module Flipper
           false
         end
       end
+    end
+
+    # Public: Read-only diagnosis of which property changes would make this
+    # feature evaluate to the target state for an actor.
+    #
+    # actor   - a Flipper::Types::Actor instance or an object that responds
+    #           to flipper_id.
+    # target  - the desired enabled? result (true or false).
+    # mutable - Hash of property name => finite Array of candidate values
+    #           that the property may change to.
+    # fixed   - Array of property names that must keep their current value.
+    # costs   - optional Hash of property name => Numeric tie-break cost.
+    # budget  - maximum number of enabled? evaluations the search may run.
+    #
+    # Returns a Flipper::Diagnosis::Result. Neither the actor nor this
+    # feature is modified.
+    def diagnose(actor, target:, mutable:, fixed: [], costs: {}, budget: Diagnosis::DEFAULT_BUDGET)
+      Diagnosis.new(
+        self,
+        actor: actor,
+        target: target,
+        mutable: mutable,
+        fixed: fixed,
+        costs: costs,
+        budget: budget
+      ).solve
     end
 
     # Public: Enables an expression_to_add for a feature.
