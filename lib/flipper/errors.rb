@@ -19,4 +19,10 @@ module Flipper
       super(message || default)
     end
   end
+
+  # Raised by read-only diagnostics when a feature uses a gate that cannot
+  # be diagnosed deterministically (registered Ruby groups, percentage of
+  # time or a time/random expression) or when a requested attribute change
+  # is invalid.
+  class UnsupportedDiagnostic < Error; end
 end

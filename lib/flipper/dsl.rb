@@ -40,6 +40,49 @@ module Flipper
       feature(name).enabled?(*args)
     end
 
+    # Public: Read-only support diagnosis. Given an actor that did not hit a
+    # feature, find the smallest set of actor attribute changes (from the
+    # declared candidate values) that would flip enabled? to the target.
+    #
+    # feature_name - The String or Symbol name of the feature.
+    # actor        - The actor being diagnosed.
+    # changeable   - Hash of attribute name => candidate values. A value may
+    #                be a Flipper::Diagnostic::Candidate or a [value, cost]
+    #                pair to declare an explicit cost.
+    # fixed        - Hash of attribute name => value held constant.
+    # target       - true for an enabling plan (default), false for a
+    #                disabling plan.
+    # budget       - Integer maximum feature evaluations, nil for unlimited.
+    #
+    # Returns a Flipper::Diagnostic::Result. Raises
+    # Flipper::UnsupportedDiagnostic for Ruby groups, percentage of time or
+    # time/random expressions. Never mutates the actor or gates.
+    def suggest_attribute_changes(feature_name, actor, changeable: {}, fixed: {}, target: true, budget: nil)
+      Flipper::Diagnostic.suggest(
+        dsl: self,
+        feature_name: feature_name,
+        actor: actor,
+        changeable: changeable,
+        fixed: fixed,
+        target: target,
+        budget: budget
+      )
+    end
+
+    # Public: Exhaustive reference counterpart to
+    # #suggest_attribute_changes for small attribute domains. Evaluates every
+    # assignment and returns a proven-:optimal or proven-:impossible result.
+    def exhaustive_attribute_changes(feature_name, actor, changeable: {}, fixed: {}, target: true)
+      Flipper::Diagnostic.exhaustive(
+        dsl: self,
+        feature_name: feature_name,
+        actor: actor,
+        changeable: changeable,
+        fixed: fixed,
+        target: target
+      )
+    end
+
     # Public: Enable a feature.
     #
     # name - The String or Symbol name of the feature.
