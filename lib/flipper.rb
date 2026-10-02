@@ -56,7 +56,7 @@ module Flipper
   # Public: All the methods delegated to instance. These should match the
   # interface of Flipper::DSL.
   def_delegators :instance,
-                 :enabled?, :enable, :disable,
+                 :enabled?, :compile_sql, :enable, :disable,
                  :enable_expression, :disable_expression,
                  :expression, :add_expression, :remove_expression,
                  :enable_actor, :disable_actor,
@@ -210,6 +210,7 @@ require 'flipper/middleware/setup_env'
 require 'flipper/poller'
 require 'flipper/registry'
 require 'flipper/expression'
+require 'flipper/sql_compiler'
 require 'flipper/type'
 require 'flipper/types/actor'
 require 'flipper/types/boolean'

@@ -40,6 +40,11 @@ module Flipper
       feature(name).enabled?(*args)
     end
 
+    # Public: Compile a feature to a parameterized SQL predicate.
+    def compile_sql(name, columns:)
+      feature(name).compile_sql(columns: columns)
+    end
+
     # Public: Enable a feature.
     #
     # name - The String or Symbol name of the feature.

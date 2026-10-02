@@ -291,6 +291,13 @@ module Flipper
       GateValues.new(adapter_values)
     end
 
+    # Public: Compile the gates for this feature into a parameterized SQL
+    # predicate. The columns Hash is the whitelist of actor properties that may
+    # be read from SQL.
+    def compile_sql(columns:)
+      SQLCompiler.new(adapter).compile(self, columns: columns)
+    end
+
     # Public: Get groups enabled for this feature.
     #
     # Returns Set of Flipper::Types::Group instances.
